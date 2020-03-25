@@ -158,28 +158,26 @@ extension Visualizer {
                 view.beginTouch()
                 view.center = touch.location(in: topWindow)
                 topWindow.addSubview(view)
-                log(touch)
             case .moved:
-                if let view = findTouchView(touch) {
-                    view.center = touch.location(in: topWindow)
-                }
+                guard let view = findTouchView(touch) else { break }
+                view.center = touch.location(in: topWindow)
+            case .ended,
+                 .cancelled:
+                guard let view = findTouchView(touch) else { break }
                 
-                log(touch)
-            case .stationary:
-                log(touch)
-            case .ended, .cancelled:
-                if let view = findTouchView(touch) {
-                    UIView.animate(withDuration: 0.2, delay: 0.0, options: .allowUserInteraction, animations: { () -> Void  in
-                        view.alpha = 0.0
-                        view.endTouch()
-                    }, completion: { [unowned self] (finished) -> Void in
-                        view.removeFromSuperview()
-                        self.log(touch)
-                    })
-                }
-                
-                log(touch)
+                UIView.animate(withDuration: 0.2,
+                               delay: 0.0,
+                               options: .allowUserInteraction,
+                               animations: { view.alpha = 0.0 },
+                               completion: { _ in view.removeFromSuperview() })
+            case .stationary,
+                 .regionMoved,
+                 .regionExited,
+                 .regionEntered: break
+            @unknown default: break
             }
+            
+            log(touch)
         }
     }
 }
@@ -205,14 +203,18 @@ extension Visualizer {
             index = "\(ti)"
             ti += 1
             
-            var phase: String!
-            switch touch.phase {
-            case .began: phase = "B"
-            case .moved: phase = "M"
-            case .stationary: phase = "S"
-            case .ended: phase = "E"
-            case .cancelled: phase = "C"
-            }
+            let phase: String = {
+                switch touch.phase {
+                case .began: return "B"
+                case .moved: return "M"
+                case .stationary: return "S"
+                case .ended: return "E"
+                case .cancelled: return "C"
+                case .regionEntered: return "REN"
+                case .regionMoved: return "RM"
+                case .regionExited: return "REX"
+                @unknown default: return "UNSPECIFIED"
+                }}()
             
             let x = String(format: "%.02f", view.center.x)
             let y = String(format: "%.02f", view.center.y)
